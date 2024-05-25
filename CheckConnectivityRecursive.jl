@@ -1,6 +1,6 @@
 ###
 #A Julia implementation of the algorithm 'CheckConnectivityRecursive' 
-#from [Máté L. Telek, Geometry of the signed support of a multivariate polynomial and Descartes' rule of signs, 2023.] 
+#from [Máté L. Telek, Geometry of the signed support of a multivariate polynomial and Descartes' rule of signs, 2024.] 
 #using OSCAR and Polymake. 
 ####
 
@@ -93,8 +93,14 @@ function signed_support(f)
 #    supp   ---   pm::Matrix<pm::Rational>   ---   each row has the form [1, exponent vector]
 #    A   ---   Vector{Any}   ---   contains indicies of the positive exponent vectors
 #    B   ---   Vector{Any}   ---   contains indicies of the negative exponent vectors
-    supp = collect(exponent_vectors(f))
-    coeff = collect(coeffs(f))
+    
+    coeff = collect(Oscar.coefficients(f))
+    monos = collect(Oscar.monomials(f)) 
+    coeff = collect(Oscar.coefficients(f))
+    supp = Vector{Int64}[] 
+    for i in 1:length(monos)
+        push!(supp,exponent_vector(monos[i],1))
+    end
     
     #Get signed support but ONLY the indicies
     A = []
@@ -423,7 +429,7 @@ function print_details(supp,A,B)
 #    B   ---   Vector{Any}   ---   contains indicies of the negative exp. vectors  
 #OUTPUT
     P = Polymake.polytope.Polytope(POINTS=supp)
-    println("dimemsion of the Newton polytope:  "*string(Polymake.polytope.dim(P)))
+    println("dimension of the Newton polytope:  "*string(Polymake.polytope.dim(P)))
     println("# of pos. exponent vectors: "*string(length(A))*" # of neg. exponent vectors: "*string(length(B)))
     
 end
@@ -457,8 +463,8 @@ function critical_polynomial(rn)
     N = netstoichmat(rn)
     
     #Compute the flux cone and its extreme vectors
-    matrix_def_cone = vcat(N,-N,-Matrix(identity_matrix(QQ,ncols(N))))
-    C = Polyhedron(matrix_def_cone,[0 for i in 1:(nrows(matrix_def_cone))])
+    matrix_def_cone = vcat(N,-N,-Matrix{Int}(I,ncols(N),ncols(N)))
+    C = polyhedron(matrix_def_cone,[0 for i in 1:(nrows(matrix_def_cone))])
     E = Matrix(transpose(matrix(QQ, rays(C))))
     W = rref(matrix(QQ,conservationlaws(N)))[2] #Make sure that W is row reduced
     Y = substoichmat(rn)
@@ -471,7 +477,7 @@ function critical_polynomial(rn)
     #Compute the critical polynomial
     ls = ["L[$i]" for i in 1:lnum]
     hs = ["h[$i]" for i in 1:hnum]
-    global R,var = PolynomialRing(QQ, vcat(ls,hs))
+    global R,var = polynomial_ring(QQ, vcat(ls,hs))
 
     Elambda = E * [gens(R)[i]  for i in 1:lnum]
     D = Matrix(identity_matrix(R,r))
